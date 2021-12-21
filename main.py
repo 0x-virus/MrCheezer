@@ -2,13 +2,24 @@ import pygame
 from pygame.locals import *
 
 
+class Border(pygame.sprite.Sprite):
+    def __init__(self, x1, y1, x2, y2):
+        super().__init__(all_sprites)
+        if x1 == x2:
+            self.rect = pygame.Rect(x1, y1, 1, y2 - y1)
+            self.image = pygame.Surface([1, y2 - y1])
+        else:
+            self.rect = pygame.Rect(x1, y1, x2 - x1, 1)
+            self.image = pygame.Surface([x2 - x1, 1])
+
+
 class Player(pygame.sprite.Sprite):
     image = pygame.image.load('data/player.png')
     image2 = pygame.image.load('data/player_2.png')
 
     def __init__(self, x, y):
-        super().__init__(all_sprites)
-        self.image = pygame.transform.scale(Player.image, (65, 100))
+        super().__init__()
+        self.image = pygame.transform.scale(Player.image, (55, 90))
         self.rect = self.image.get_rect()
         self.rect.x = x
         self.rect.y = y
@@ -25,16 +36,17 @@ class Player(pygame.sprite.Sprite):
         if self.old_x == self.rect.x and self.old_y == self.rect.y:
             self.update_time += 1
             if self.update_time == 20:
-                self.image = pygame.transform.scale(Player.image2, (65, 100))
+                self.image = pygame.transform.scale(Player.image2, (55, 90))
             if self.update_time == 40:
-                self.image = pygame.transform.scale(Player.image, (65, 100))
+                self.image = pygame.transform.scale(Player.image, (55, 90))
                 self.update_time = 0
         else:
             self.update_time = 0
-            self.image = pygame.transform.scale(Player.image, (65, 100))
+            self.image = pygame.transform.scale(Player.image, (55, 90))
 
         self.old_x = self.rect.x
         self.old_y = self.rect.y
+        screen.blit(self.image, (self.rect.x, self.rect.y))
 
 
 class Enemy:
@@ -56,12 +68,17 @@ class Block:
 if __name__ == '__main__':
     all_sprites = pygame.sprite.Group()
 
-    size = width, height = 1300, 800
+    size = width, height = 1320, 770
     screen = pygame.display.set_mode(size)
     fps = 60
     clock = pygame.time.Clock()
 
-    player = Player(200, 200)
+    player = Player(10, 400)
+
+    border1 = Border(0, 0, width, 0)
+    border2 = Border(0, height, width, height)
+    border3 = Border(0, 0, 0, height)
+    border4 = Border(width, 0, width, height)
 
     running = True
     while running:
@@ -69,11 +86,14 @@ if __name__ == '__main__':
             if event.type == pygame.QUIT:
                 running = False
         if pygame.key.get_pressed()[pygame.K_a]:
-            player.rect.x -= player.speed
+            if not pygame.sprite.collide_mask(player, border3):
+                player.rect.x -= player.speed
         if pygame.key.get_pressed()[pygame.K_d]:
-            player.rect.x += player.speed
-        if pygame.key.get_pressed()[pygame.K_SPACE]:
-            pass
+            if not pygame.sprite.collide_mask(player, border1):
+                player.rect.x += player.speed
+
+        # if pygame.key.get_pressed()[pygame.K_SPACE]:
+        #     pass
         screen.fill((120, 116, 184))
 
         player.update()
