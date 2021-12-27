@@ -22,7 +22,7 @@ class Player(pygame.sprite.Sprite):
 
     def __init__(self, x, y):
         super().__init__()
-        self.size = (55, 85)
+        self.size = (75, 105)
 
         self.image = pygame.transform.scale(Player.image, self.size)
         self.rect = self.image.get_rect()
@@ -33,11 +33,15 @@ class Player(pygame.sprite.Sprite):
         self.old_y = self.rect.y
 
         self.direction = True
+        self.jump = False
+        self.in_air = False
         self.speed = 4
+        self.fall_speed = 5
         self.hp = 100
 
         self.afk_update_time = 0
         self.direction_update_time = 0
+        self.jump_update_time = 0
 
     def update(self):
         if self.old_x == self.rect.x and self.old_y == self.rect.y:
@@ -86,6 +90,20 @@ class Player(pygame.sprite.Sprite):
                     self.image = pygame.transform.flip(pygame.transform.scale(Player.run2, self.size), True, False)
                     self.direction_update_time = 0
 
+        if not pygame.sprite.spritecollideany(self, blocks) and not self.jump:
+            self.rect.y += self.fall_speed
+            self.in_air = True
+        elif self.jump:
+            self.jump_update_time += 1
+            if self.jump_update_time == 20:
+                self.jump = 0
+                self.jump_update_time = 0
+            else:
+                self.rect.y -= self.fall_speed + 3
+            self.in_air = True
+        else:
+            self.in_air = False
+
         self.old_x = self.rect.x
         self.old_y = self.rect.y
         screen.blit(self.image, (self.rect.x, self.rect.y))
@@ -108,11 +126,17 @@ class Enemy:
         self.hp = hp
 
 
-class Block:
+class Block(pygame.sprite.Sprite):
+    image = pygame.image.load('data/block.png')
+
     def __init__(self, x, y, enemy=False):
-        super().__init__()
-        self.x = x
-        self.y = y
+        super().__init__(blocks)
+
+        self.image = pygame.transform.scale(Block.image, (40, 40))
+        self.rect = self.image.get_rect()
+
+        self.rect.x = x
+        self.rect.y = y
         self.enemy = enemy
 
 
@@ -123,11 +147,15 @@ if __name__ == '__main__':
     clock = pygame.time.Clock()
 
     player = Player(10, 400)
+    blocks = pygame.sprite.Group()
 
     border1 = Border(0, 0, width, 0)
     border2 = Border(0, height, width, height)
     border3 = Border(0, 0, 0, height)
     border4 = Border(width, 0, width, height)
+
+    for i in range((width // 40) + 1):
+        Block(i * 40, height - 40, False)
 
     running = True
     while running:
@@ -138,13 +166,15 @@ if __name__ == '__main__':
             player.move('x', pygame.K_a)
         if pygame.key.get_pressed()[pygame.K_d]:
             player.move('x', pygame.K_d)
+        if pygame.key.get_pressed()[pygame.K_SPACE] and not player.jump and not player.in_air:
+            player.jump = True
 
-        # if pygame.key.get_pressed()[pygame.K_SPACE]:
-        #     pass
         screen.fill((107, 102, 176))
 
+        blocks.draw(screen)
         player.update()
 
         pygame.display.flip()
         clock.tick(fps)
+        pygame.display.set_caption(str(int(clock.get_fps())))
     pygame.quit()
