@@ -36,7 +36,7 @@ class Player(pygame.sprite.Sprite):
         self.jump = False
         self.in_air = False
         self.speed = 4
-        self.fall_speed = 5
+        self.fall_speed = 7
         self.hp = 100
 
         self.afk_update_time = 0
@@ -90,17 +90,26 @@ class Player(pygame.sprite.Sprite):
                     self.image = pygame.transform.flip(pygame.transform.scale(Player.run2, self.size), True, False)
                     self.direction_update_time = 0
 
-        if not pygame.sprite.spritecollideany(self, blocks) and not self.jump:
+        if not pygame.sprite.spritecollideany(self, blocks) and not self.jump and \
+                not pygame.sprite.collide_mask(self, border2):
             self.rect.y += self.fall_speed
             self.in_air = True
+            if pygame.sprite.spritecollideany(self, blocks) or pygame.sprite.collide_mask(self, border2):
+                self.in_air = False
+                self.rect.y -= self.fall_speed
         elif self.jump:
             self.jump_update_time += 1
-            if self.jump_update_time == 20:
-                self.jump = 0
+            if self.jump_update_time == 25:
+                self.jump = False
                 self.jump_update_time = 0
             else:
-                self.rect.y -= self.fall_speed + 3
+                self.rect.y -= self.fall_speed
             self.in_air = True
+            if pygame.sprite.spritecollideany(self, blocks):
+                self.jump = False
+                self.jump_update_time = 0
+                self.rect.x = self.old_x
+                self.rect.y = self.old_y
         else:
             self.in_air = False
 
@@ -113,9 +122,23 @@ class Player(pygame.sprite.Sprite):
             if key == pygame.K_a and not pygame.sprite.collide_mask(self, border3):
                 self.rect.x -= self.speed
                 self.direction = False
+                if pygame.sprite.spritecollideany(self, blocks):
+                    self.rect.y -= self.speed
+                    if not pygame.sprite.spritecollideany(self, blocks):
+                        self.rect.y += self.speed
+                    else:
+                        self.rect.y = self.old_y
+                        self.rect.x = self.old_x
             if key == pygame.K_d and not pygame.sprite.collide_mask(self, border4):
                 self.rect.x += self.speed
                 self.direction = True
+                if pygame.sprite.spritecollideany(self, blocks):
+                    self.rect.y -= self.speed
+                    if not pygame.sprite.spritecollideany(self, blocks):
+                        self.rect.y += self.speed
+                    else:
+                        self.rect.y = self.old_y
+                        self.rect.x = self.old_x
 
 
 class Enemy:
@@ -141,12 +164,12 @@ class Block(pygame.sprite.Sprite):
 
 
 if __name__ == '__main__':
-    size = width, height = 1485, 850
+    size = width, height = 1480, 840
     screen = pygame.display.set_mode(size)
     fps = 60
     clock = pygame.time.Clock()
 
-    player = Player(10, 400)
+    player = Player(0, 600)
     blocks = pygame.sprite.Group()
 
     border1 = Border(0, 0, width, 0)
@@ -154,8 +177,13 @@ if __name__ == '__main__':
     border3 = Border(0, 0, 0, height)
     border4 = Border(width, 0, width, height)
 
-    for i in range((width // 40) + 1):
-        Block(i * 40, height - 40, False)
+    Block(80, height - 40)
+    Block(120, height - 80)
+    Block(160, height - 120)
+    Block(200, height - 160)
+    Block(240, height - 160)
+    Block(280, height - 160)
+    Block(320, height - 160)
 
     running = True
     while running:
