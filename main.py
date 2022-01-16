@@ -1,5 +1,7 @@
 import pygame
+import os
 from pygame.locals import *
+import random
 
 
 class Border(pygame.sprite.Sprite):
@@ -36,14 +38,23 @@ class Player(pygame.sprite.Sprite):
         self.jump = False
         self.in_air = False
         self.speed = 4
-        self.fall_speed = 7
-        self.hp = 100
+        self.fall_speed = 8
+        self.hp = 5
+        self.collect_coins = 0
 
         self.afk_update_time = 0
         self.direction_update_time = 0
         self.jump_update_time = 0
 
     def update(self):
+        if pygame.sprite.spritecollideany(self, enemy_blocks):
+            self.hp -= 1
+            self.rect.x = spawn_coords[0]
+            self.rect.y = spawn_coords[1]
+
+        if pygame.sprite.spritecollide(self, coins, True):
+            self.collect_coins += 1
+
         if self.old_x == self.rect.x and self.old_y == self.rect.y:
             self.afk_update_time += 1
             if self.direction:
@@ -99,7 +110,7 @@ class Player(pygame.sprite.Sprite):
                 self.rect.y -= self.fall_speed
         elif self.jump:
             self.jump_update_time += 1
-            if self.jump_update_time == 25:
+            if self.jump_update_time == 20:
                 self.jump = False
                 self.jump_update_time = 0
             else:
@@ -141,18 +152,10 @@ class Player(pygame.sprite.Sprite):
                         self.rect.x = self.old_x
 
 
-class Enemy:
-    def __init__(self, x, y, hp=10):
-        super().__init__()
-        self.x = x
-        self.y = y
-        self.hp = hp
-
-
 class Block(pygame.sprite.Sprite):
     image = pygame.image.load('data/block.png')
 
-    def __init__(self, x, y, enemy=False):
+    def __init__(self, x, y):
         super().__init__(blocks)
 
         self.image = pygame.transform.scale(Block.image, (40, 40))
@@ -160,30 +163,93 @@ class Block(pygame.sprite.Sprite):
 
         self.rect.x = x
         self.rect.y = y
-        self.enemy = enemy
+
+
+class Enemy_Block(pygame.sprite.Sprite):
+    image = pygame.image.load('data/enemy_block.png')
+
+    def __init__(self, x, y):
+        super().__init__(enemy_blocks)
+
+        self.image = pygame.transform.scale(Enemy_Block.image, (40, 20))
+        self.rect = self.image.get_rect()
+
+        self.rect.x = x
+        self.rect.y = y + 20
+
+
+class Coin(pygame.sprite.Sprite):
+    image = pygame.image.load('data/coin.png')
+
+    def __init__(self, x, y):
+        super().__init__(coins)
+
+        self.image = pygame.transform.scale(Coin.image, (20, 25))
+        self.rect = self.image.get_rect()
+
+        self.rect.x = x
+        self.rect.y = y
+
+
+class Portal(pygame.sprite.Sprite):
+    image = pygame.image.load('')
+
+    def __init__(self, x, y):
+        super().__init__(coins)
+
+        self.image = pygame.transform.scale(Coin.image, (20, 25))
+        self.rect = self.image.get_rect()
+
+        self.rect.x = x
+        self.rect.y = y
+
+
+def load_level(number):
+    global player, spawn_coords
+    if os.path.exists('levels/level_' + str(number) + '.txt'):
+        file = open('levels/level_' + str(number) + '.txt')
+        data = file.read()
+
+        if len(data.split('\n')) != 21:
+            return False
+        else:
+            for y, line in enumerate(data.split('\n')):
+                if len(line) == 37:
+                    for x, symbol in enumerate(line):
+                        if symbol == 'x':
+                            Block(x * 40, y * 40)
+                        elif symbol == '@':
+                            player = Player(x * 40, y * 40)
+                            spawn_coords = [x * 40, y * 40]
+                        elif symbol == 'o':
+                            Enemy_Block(x * 40, y * 40)
+                        elif symbol == '$':
+                            Coin(x * 40, y * 40)
 
 
 if __name__ == '__main__':
     size = width, height = 1480, 840
     screen = pygame.display.set_mode(size)
-    fps = 60
+    fps = 120
     clock = pygame.time.Clock()
+    pygame.font.init()
+    font = pygame.font.Font(pygame.font.get_default_font(), 100)
+    font2 = pygame.font.Font(pygame.font.get_default_font(), 30)
 
-    player = Player(0, 600)
     blocks = pygame.sprite.Group()
+    enemy_blocks = pygame.sprite.Group()
+    coins = pygame.sprite.Group()
 
     border1 = Border(0, 0, width, 0)
     border2 = Border(0, height, width, height)
     border3 = Border(0, 0, 0, height)
     border4 = Border(width, 0, width, height)
 
-    Block(80, height - 40)
-    Block(120, height - 80)
-    Block(160, height - 120)
-    Block(200, height - 160)
-    Block(240, height - 160)
-    Block(280, height - 160)
-    Block(320, height - 160)
+    level = 1
+    game_over = False
+    spawn_coords = [0, 600]
+    player = Player(0, 600)
+    load_level(level)
 
     running = True
     while running:
@@ -197,12 +263,38 @@ if __name__ == '__main__':
         if pygame.key.get_pressed()[pygame.K_SPACE] and not player.jump and not player.in_air:
             player.jump = True
 
-        screen.fill((107, 102, 176))
+        if not game_over:
+            screen.fill((107, 102, 176))
 
-        blocks.draw(screen)
-        player.update()
+            for i in range(5):
+                if i < player.hp:
+                    screen.blit(pygame.transform.scale(pygame.image.load('data/heart.png'), (50, 50)), (i * 50, 0))
+                else:
+                    screen.blit(pygame.transform.scale(pygame.image.load('data/empty_heart.png'), (50, 50)), (i*50, 0))
 
-        pygame.display.flip()
-        clock.tick(fps)
-        pygame.display.set_caption(str(int(clock.get_fps())))
+            screen.blit(pygame.transform.scale(pygame.image.load('data/coin.png'), (40, 50)), (350, 5))
+            screen.blit(font2.render('x ' + str(player.collect_coins), True, pygame.Color('white')), (400, 20))
+
+            blocks.draw(screen)
+            enemy_blocks.draw(screen)
+            coins.draw(screen)
+            player.update()
+
+            pygame.display.flip()
+
+            if player.hp == 0:
+                game_over = True
+
+            clock.tick(fps)
+            pygame.display.set_caption(str(int(clock.get_fps())))
+        else:
+            for i in range(5):
+                image = pygame.transform.scale(pygame.image.load('data/empty_heart.png'), (50, 50))
+                screen.blit(image, (i * 50, 0))
+
+            text_surface = font.render('Game Over!!!', True, pygame.Color('white'))
+            screen.blit(text_surface, (height // 2, height // 2))
+
+            pygame.display.flip()
+
     pygame.quit()
